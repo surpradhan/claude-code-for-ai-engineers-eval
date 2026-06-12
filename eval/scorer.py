@@ -1,17 +1,31 @@
-"""Hybrid scorer: deterministic regex checks + LLM-judge (Haiku / Sonnet)."""
+"""Hybrid scorer: deterministic regex checks + Claude Code CLI judge.
 
-import os
+The judge shells out to `claude -p` so it uses your Claude Max plan
+(no separate Anthropic API key required). Tradeoff: ~5x slower than the
+direct Anthropic API; ~15 min instead of ~5 min for a full Layer 2 run.
+
+VERIFY THESE FLAGS during Phase 1 of the handoff:
+  - Does your `claude` CLI accept `--model haiku` and `--model sonnet`?
+  - If it expects full model IDs (e.g. claude-haiku-4-5-20251001), swap in
+    CLI_MODEL_FLAGS below.
+"""
+
+import json
 import re
+import subprocess
+import tempfile
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal
-
-from anthropic import Anthropic
 
 
 JudgeModel = Literal["haiku", "sonnet"]
-MODEL_IDS = {
-    "haiku": "claude-haiku-4-5-20251001",
-    "sonnet": "claude-sonnet-4-6",
+
+# Model identifiers passed to `claude -p --model <X>`. Aliases first;
+# fall back to full IDs if your CLI requires them.
+CLI_MODEL_FLAGS = {
+    "haiku": "haiku",
+    "sonnet": "sonnet",
 }
 
 
@@ -35,6 +49,39 @@ def check_regex(response_text: str, pattern: str, must_match: bool = True) -> As
     )
 
 
+def _run_claude_judge(prompt: str, model: JudgeModel, timeout: int = 60) -> str:
+    """Shell out to Claude Code CLI for a judge call.
+
+    Runs from a clean temp directory with NO `.claude/skills/` so the judge
+    response isn't itself modulated by any loaded skills. The judge needs to
+    behave like a plain Claude, not like a skill-pack-loaded Claude.
+    """
+    workdir = Path(tempfile.mkdtemp(prefix="claude-judge-"))
+    args = [
+        "claude", "-p", prompt,
+        "--model", CLI_MODEL_FLAGS[model],
+        "--output-format", "json",
+    ]
+    result = subprocess.run(
+        args,
+        cwd=workdir,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"claude CLI judge call failed (exit {result.returncode}): "
+            f"{result.stderr[:500]}"
+        )
+
+    try:
+        payload = json.loads(result.stdout)
+        return payload.get("result") or payload.get("response") or result.stdout
+    except json.JSONDecodeError:
+        return result.stdout
+
+
 def judge(
     response_text: str,
     assertion: str,
@@ -42,8 +89,6 @@ def judge(
     model: JudgeModel = "haiku",
 ) -> AssertionResult:
     """LLM-judge a fuzzy behavioral assertion against the response."""
-    client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-
     rubric = f"""You are evaluating whether a Claude response satisfies a behavioral assertion.
 
 ASSERTION ({polarity}): {assertion}
@@ -64,13 +109,7 @@ or
 FAIL — <one sentence justification>
 """
 
-    resp = client.messages.create(
-        model=MODEL_IDS[model],
-        max_tokens=200,
-        messages=[{"role": "user", "content": rubric}],
-    )
-
-    text = resp.content[0].text.strip()
+    text = _run_claude_judge(rubric, model).strip()
     passed = text.upper().startswith("PASS")
     reason = text.split("—", 1)[-1].strip() if "—" in text else text
 
@@ -87,9 +126,9 @@ def judge_calibrate(
     assertion: str,
     polarity: Literal["must_do", "must_not_do"],
 ) -> tuple[AssertionResult, AssertionResult, bool]:
-    """Run BOTH Haiku and Sonnet. Returns (haiku_result, sonnet_result, agreed).
+    """Run BOTH Haiku and Sonnet through the CLI. Returns (haiku, sonnet, agreed).
 
-    Used during the 2-week calibration window. The report aggregates the
+    Used during the 2-week calibration window. The runner aggregates the
     agreement rate across all scenarios. Once it hits >=90%, switch to
     `--judge haiku` and drop Sonnet from the loop.
     """

@@ -11,11 +11,12 @@ requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [{name = "Surabhi Pradhan"}]
 dependencies = [
-    "anthropic>=0.40.0",
     "pyyaml>=6.0",
     "click>=8.1",
     "rich>=13.0",
 ]
+# Note: no `anthropic` dependency. The judge shells out to the `claude` CLI
+# so it uses your Claude Max plan instead of a separate API key.
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0", "ruff>=0.4"]

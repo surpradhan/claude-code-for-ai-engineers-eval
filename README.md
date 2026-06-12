@@ -34,7 +34,10 @@ git submodule add https://github.com/surpradhan/claude-code-for-ai-engineers ski
 git submodule update --init
 
 pip install -e .
-export ANTHROPIC_API_KEY=sk-ant-...
+
+# Make sure the `claude` CLI is logged in (it uses your Claude Max plan,
+# no separate Anthropic API key required):
+claude --version
 
 # Public CI scorecard — 2 preview skills
 python -m eval.runner --layer 1 --layer 2 --source preview
@@ -63,8 +66,10 @@ Then add your prompts to `scenarios/triggers.yaml` and your scenarios to `scenar
 Layer 2 scoring is hybrid:
 
 - **Deterministic** — regex/keyword checks on Claude's response. Free, no judge call.
-- **Haiku judge** — fast, cheap LLM-judge against a strict rubric. Default production mode.
+- **Haiku judge** — LLM-judge against a strict rubric. Default production mode. Calls `claude -p --model haiku`, runs against your Claude Max plan.
 - **Sonnet calibration** — for the first two weeks, every fuzzy assertion runs through BOTH Haiku and Sonnet (`--judge calibrate`). Once they agree ≥90% of the time on your scenarios, drop Sonnet (`--judge haiku`) and run Haiku only.
+
+The judge shells out to the `claude` CLI rather than the Anthropic Python SDK, so no separate API key is required. Tradeoff: ~5x slower than direct API calls (subprocess overhead). A full Layer 2 calibrate run takes ~15 min on the flagship instead of ~5 min via API.
 
 ## CI
 

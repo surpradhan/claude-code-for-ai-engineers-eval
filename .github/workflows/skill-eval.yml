@@ -32,6 +32,14 @@ jobs:
       - name: Install eval harness
         run: pip install -e .
 
+      # NOTE: CI authentication for the `claude` CLI is non-trivial without
+      # an API key. Three options, pick one:
+      #   1) Add an ANTHROPIC_API_KEY secret as a CI-only fallback (the
+      #      cheapest skill-eval API spend is roughly cents per run).
+      #   2) Add CLAUDE_CODE_OAUTH_TOKEN as a secret if your Claude Max
+      #      account supports headless token auth.
+      #   3) Skip CI entirely and run evals locally on your machine.
+      # The workflow below assumes (1) is the path. Swap the secret if not.
       - name: Run Layer 1
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
