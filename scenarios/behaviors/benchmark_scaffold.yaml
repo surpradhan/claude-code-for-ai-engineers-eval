@@ -1,0 +1,27 @@
+# Layer 2 — Behavioral scenarios for benchmark-scaffold (full pack).
+#
+# Core gates: config-first runs (no hardcoded params); harness separated from
+# the artifacts under test; results are versioned.
+
+scenarios:
+
+  - name: config_first_not_hardcoded
+    prompt: "Scaffold a benchmark project comparing three recommendation algorithms on MovieLens."
+    must_do:
+      - text: "Claude scaffolds the benchmark with a config file (YAML or similar) that drives runs, not hardcoded parameters in scripts"
+    must_not_do:
+      - text: "Claude hardcodes algorithm parameters, dataset paths, or hyperparameters into Python files instead of pulling from config"
+
+  - name: harness_separated_from_artifacts
+    prompt: "Set up a benchmark scaffold where I'll be adding new forecasting models over time."
+    must_do:
+      - text: "Claude creates a clear directory boundary between the eval harness (shared, reusable) and the model implementations (artifacts under test, swappable)"
+    must_not_do:
+      - text: "Claude entangles the harness logic with the model code such that adding a model requires editing the harness"
+
+  - name: versioned_results
+    prompt: "Scaffold a benchmark project for RAG retrieval algorithms."
+    must_do:
+      - text: "Claude includes a versioned results directory structure (timestamped or commit-pinned), not a single results.json that gets overwritten"
+    must_not_do:
+      - text: "Claude scaffolds with a single results file that gets clobbered on each run"

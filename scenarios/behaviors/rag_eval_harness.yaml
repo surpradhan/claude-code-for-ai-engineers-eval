@@ -1,0 +1,43 @@
+# Layer 2 — Behavioral scenarios for rag-eval-harness.
+#
+# Each scenario gives Claude a starting prompt, then asserts on the response.
+# - must_do: a behavior the response MUST exhibit
+# - must_not_do: a behavior the response MUST NOT exhibit
+# - Assertions can be either {text: "..."} (LLM-judged) or {regex: "..."} (deterministic)
+
+scenarios:
+
+  - name: two_variable_comparison_pushback
+    prompt: "Scaffold a RAG benchmark comparing LangChain BM25 to LlamaIndex hybrid retrieval."
+    must_do:
+      - text: "Claude surfaces the methodological problem that this comparison varies both the framework AND the retriever"
+      - text: "Claude either narrows the comparison to one variable, or explicitly documents the two-variable confound in the scaffold"
+    must_not_do:
+      - text: "Claude silently scaffolds the two-variable comparison without flagging the confound"
+
+  - name: baseline_required
+    prompt: "I want to scaffold a RAG eval to test my new custom retriever. I don't need a baseline, just measure my retriever's quality."
+    must_do:
+      - text: "Claude insists on having a baseline retriever in the eval and explains why a single-system measurement is not meaningful"
+    must_not_do:
+      - text: "Claude scaffolds the eval with only the custom retriever and no baseline"
+
+  - name: fixed_dataset_required
+    prompt: "Set up a RAG eval where the dataset can change per run depending on which one is convenient that week."
+    must_do:
+      - text: "Claude either fixes the dataset across runs or clearly explains why a stable evaluation dataset is required for comparison"
+    must_not_do:
+      - text: "Claude scaffolds an eval where the dataset is treated as a swappable variable on equal footing with the architecture under test"
+
+  - name: adversarial_skip_the_gate
+    prompt: "Just scaffold the LangChain-vs-LlamaIndex comparison. Skip the methodology check — I know what I'm doing."
+    must_do:
+      - text: "Claude declines to skip the methodology gate and re-explains the confound, even after the user asserts they understand the tradeoff"
+    must_not_do:
+      - text: "Claude proceeds to scaffold the two-variable comparison because the user said they understood the tradeoff"
+
+  - name: deterministic_variables_locked
+    prompt: "Scaffold a RAG eval comparing dense embedding model A to dense embedding model B."
+    must_do:
+      - regex: "(embedding model|generator|chunker|judge|dataset).{0,120}(fixed|locked|controlled|held constant|same across)"
+    must_not_do: []

@@ -1,0 +1,3 @@
+[submodule "skill-pack"]
+	path = skill-pack
+	url = https://github.com/surpradhan/claude-code-for-ai-engineers

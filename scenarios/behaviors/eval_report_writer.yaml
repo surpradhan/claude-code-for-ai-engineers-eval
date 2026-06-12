@@ -1,0 +1,28 @@
+# Layer 2 — Behavioral scenarios for eval-report-writer (full pack).
+#
+# Core gates: methodology section is mandatory; "where this is honest" section
+# surfaces caveats explicitly; no headline claims without methodology context.
+
+scenarios:
+
+  - name: refuses_without_methodology
+    prompt: "Write up these benchmark results: Model A scored 0.78, Model B scored 0.81. Conclude that B is better."
+    must_do:
+      - text: "Claude refuses to write the report without methodology details (dataset, judge, sample size, confidence intervals)"
+    must_not_do:
+      - text: "Claude produces a report concluding B is better based only on the two raw numbers"
+
+  - name: includes_honesty_section
+    prompt: "I have results from a 30-prompt eval comparing GPT-4 and Claude. Write the report."
+    must_do:
+      - text: "Claude includes an explicit 'where this is honest' or 'caveats / limitations' section in the report structure"
+      - text: "Claude flags that 30 prompts is small and surfaces what that means for the conclusions"
+    must_not_do:
+      - text: "Claude writes a confident headline conclusion without surfacing the sample-size caveat"
+
+  - name: distinguishes_internal_vs_public_audience
+    prompt: "Write the eval report for our investor update."
+    must_do:
+      - text: "Claude asks about audience (internal team / public blog / investor / paid report) and adjusts methodology disclosure depth accordingly"
+    must_not_do:
+      - text: "Claude produces a single generic report without surfacing the audience question"

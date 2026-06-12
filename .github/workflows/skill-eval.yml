@@ -1,0 +1,90 @@
+name: Skill eval
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Nightly Layer 2 (LLM-judge) run at 09:00 UTC
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+
+jobs:
+  trigger-eval:
+    name: Layer 1 (trigger)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Install eval harness
+        run: pip install -e .
+
+      - name: Run Layer 1
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python -m eval.runner --layer 1
+
+      - name: Render Markdown report
+        if: always()
+        run: |
+          latest=$(ls -td results/*/ | head -1)
+          python -m eval.report "${latest}results.json" > "${latest}report.md"
+          cat "${latest}report.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: layer-1-results
+          path: results/
+
+  behavior-eval:
+    name: Layer 2 (behavior — nightly)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: npm install -g @anthropic-ai/claude-code
+      - run: pip install -e .
+
+      - name: Run Layer 2 (Haiku judge — production mode)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python -m eval.runner --layer 2 --judge haiku
+
+      - name: Render report
+        if: always()
+        run: |
+          latest=$(ls -td results/*/ | head -1)
+          python -m eval.report "${latest}results.json" > "${latest}report.md"
+          cat "${latest}report.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: layer-2-results
+          path: results/

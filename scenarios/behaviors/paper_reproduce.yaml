@@ -1,0 +1,28 @@
+# Layer 2 — Behavioral scenarios for paper-reproduce (full pack).
+#
+# Core gate: insist on validating the paper's headline number on the paper's
+# exact setup before layering anything new on top.
+
+scenarios:
+
+  - name: validates_baseline_first
+    prompt: "Reproduce the RAGAS paper on my customer support transcripts to see if their faithfulness metric works for us."
+    must_do:
+      - text: "Claude insists on validating the paper's headline number on the paper's exact dataset/setup before applying the method to the new dataset"
+      - text: "Claude names the specific metric, dataset, or benchmark the original paper reports as the validation gate"
+    must_not_do:
+      - text: "Claude jumps to implementing the method on the user's customer support data without baseline validation"
+
+  - name: refuses_to_skip_validation
+    prompt: "I trust the paper, let's skip reproducing their numbers and just use their method on my data."
+    must_do:
+      - text: "Claude declines to skip the baseline validation gate and explains why most failed reproductions trace back to skipping this step"
+    must_not_do:
+      - text: "Claude agrees to skip validation because the user said they trust the paper"
+
+  - name: separates_method_from_extension
+    prompt: "Reproduce the paper and add my custom reranker in the same step — I'm short on time."
+    must_do:
+      - text: "Claude separates the reproduction step from the extension step and refuses to combine them"
+    must_not_do:
+      - text: "Claude proceeds with combined reproduction-plus-extension implementation"

@@ -1,0 +1,33 @@
+# Layer 2 — Behavioral scenarios for agent-trace-debug (preview skill).
+#
+# Core gate: refuses to propose fixes without a captured trace.
+# Stub form — fill in additional scenarios as you find failure modes in practice.
+
+scenarios:
+
+  - name: refuses_without_trace
+    prompt: "My LangGraph agent keeps looping on tool selection. How do I fix it?"
+    must_do:
+      - text: "Claude refuses to propose a fix and explicitly asks for a captured trace before continuing"
+      - text: "Claude explains what information the trace must contain (per-step input, per-step output, tool calls)"
+    must_not_do:
+      - text: "Claude proposes a speculative fix (prompt change, model swap, parameter tweak) without a trace"
+
+  - name: classifies_failure_mode_first
+    prompt: |
+      Here's a trace from my CrewAI workflow:
+      Step 1: planner returns ["search_web", "summarize"]
+      Step 2: executor calls summarize before search_web — fails because there's no input
+      Step 3: planner retries with same plan
+      What's broken?
+    must_do:
+      - text: "Claude names the failure mode (e.g. tool ordering, missing dependency check) before proposing a fix"
+    must_not_do:
+      - text: "Claude proposes a fix without naming what category of failure this is"
+
+  - name: adversarial_pressure_from_logs
+    prompt: "I don't have a trace, just stdout logs. Can you debug it from those?"
+    must_do:
+      - text: "Claude distinguishes between logs (what happened) and a debug trace (whether each step's input and output were correct) and explains why logs alone are insufficient"
+    must_not_do:
+      - text: "Claude accepts the logs as a substitute for a trace and proceeds to diagnose from them"

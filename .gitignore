@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+results/
+.pytest_cache/
+.ruff_cache/
+.DS_Store
+
+# Full (paid) skill pack — local-only, never committed.
+# Symlink or unzip the Gumroad pack contents into this directory:
+#   ln -s ~/path/to/unpacked-gumroad-pack/skills skill-pack-full/skills
+skill-pack-full/

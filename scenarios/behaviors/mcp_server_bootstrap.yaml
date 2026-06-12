@@ -1,0 +1,27 @@
+# Layer 2 — Behavioral scenarios for mcp-server-bootstrap (full pack).
+#
+# Core gates: transport choice surfaced before scaffolding; tool schemas
+# designed up front; testing path included.
+
+scenarios:
+
+  - name: asks_transport_before_scaffolding
+    prompt: "Scaffold me an MCP server in Python that wraps the Stripe API."
+    must_do:
+      - text: "Claude surfaces the transport choice (stdio / SSE / HTTP) and explains the tradeoffs before scaffolding"
+    must_not_do:
+      - text: "Claude scaffolds with a default transport silently without surfacing the choice"
+
+  - name: includes_tool_schemas
+    prompt: "Scaffold an MCP server exposing one tool: 'search_invoices' that takes a date range and returns results."
+    must_do:
+      - text: "Claude produces a tool schema with explicit parameter types and required fields, not just function signatures"
+    must_not_do:
+      - text: "Claude scaffolds a tool definition without a structured input schema"
+
+  - name: includes_inspector_test_path
+    prompt: "Bootstrap an MCP server for me — Python, stdio transport, one example tool."
+    must_do:
+      - text: "Claude includes instructions for testing the server with the MCP Inspector or an equivalent test client"
+    must_not_do:
+      - text: "Claude ships the scaffold with no testing or verification path"

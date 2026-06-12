@@ -1,0 +1,115 @@
+# Layer 1 — Trigger eval prompts.
+#
+# For each skill: 15 should-trigger prompts (skill MUST load) and
+# 15 should-NOT-trigger prompts (skill MUST NOT load). The not-trigger
+# prompts should be near-misses — same domain, different intent.
+#
+# This file ships with rag-eval-harness fully populated. Fill in the
+# others before your first full run.
+
+rag-eval-harness:
+  should_trigger:
+    - "Set up a controlled RAG eval comparing BM25 to dense retrieval"
+    - "I want to benchmark hybrid search vs BM25 on my dataset"
+    - "Help me write an evaluation harness for our RAG system"
+    - "I need to compare two embedding models for retrieval — what's the right setup?"
+    - "Scaffold a RAG comparison project where I can swap retrievers"
+    - "How do I run an apples-to-apples RAG benchmark"
+    - "I want to add a new retriever to my existing RAG eval"
+    - "Build me a RAG evaluation framework"
+    - "Compare reranker vs no-reranker for our docs"
+    - "We're picking between Cohere rerank and bge-reranker — set up the eval"
+    - "Help me measure if my new chunker is better than the old one"
+    - "I need a controlled experiment for retrieval quality"
+    - "Eval my RAG against a baseline"
+    - "Set up scoring for a RAG comparison"
+    - "Bootstrap a RAG benchmarking project"
+  should_not_trigger:
+    # Near-misses — RAG-adjacent but not eval-harness work
+    - "Build me a RAG chatbot for customer support"
+    - "How do I deploy a RAG system to production"
+    - "What's the best vector database in 2026"
+    - "Write a tutorial blog post about RAG"
+    - "Fix a bug in my LangChain RAG pipeline"
+    - "Help me prompt-tune my retrieval-augmented generator"
+    - "What chunking strategy should I use"
+    - "Explain how rerankers work"
+    - "My RAG is returning irrelevant docs, help me debug"  # should hit agent-trace-debug if anything
+    - "Generate synthetic Q&A pairs for RAG training"
+    - "Reproduce the RAGAS paper"  # should hit paper-reproduce
+    - "Build a scaffold for benchmarking text classifiers"  # should hit benchmark-scaffold
+    - "Show me how to use ChromaDB"
+    - "What's the difference between dense and sparse retrieval"
+    - "Help me write a blog post comparing RAG frameworks"
+
+# Below skills have starter prompts (5+5). Expand each to 15+15 during week 1.
+
+agent-trace-debug:
+  should_trigger:
+    - "My LangGraph agent keeps looping on tool selection, fix it"
+    - "Here's a trace from my CrewAI run — diagnose the issue"
+    - "Debug my AutoGen multi-agent workflow, it produces wrong outputs"
+    - "My OpenAI Agents SDK agent picks the wrong tool, help me trace why"
+    - "Walk me through debugging this captured agent trace"
+  should_not_trigger:
+    - "Build me a multi-agent workflow using LangGraph"
+    - "What's the difference between LangGraph and CrewAI"
+    - "Write me a system prompt for an agent that does research"
+    - "Help me deploy my agent to production"
+    - "How do I add memory to my agent"
+
+paper-reproduce:
+  should_trigger:
+    - "Reproduce the RAGAS paper on my customer support data"
+    - "I want to replicate the headline result from this NeurIPS paper"
+    - "Help me set up a reproduction scaffold for the LIMA paper"
+    - "I'm using a paper's method as my baseline — how do I validate I implemented it correctly?"
+    - "Reproduce this method on a new dataset"
+  should_not_trigger:
+    - "Summarize this paper for me"
+    - "What's the SOTA on HotpotQA"
+    - "Explain how DPO works"
+    - "Find me papers on agentic RAG"
+    - "Write a blog post about a recent paper"
+
+mcp-server-bootstrap:
+  should_trigger:
+    - "Scaffold me an MCP server in Python"
+    - "Bootstrap a new MCP server with FastMCP"
+    - "Set up an MCP server in TypeScript that exposes one tool"
+    - "Help me create an MCP server that wraps the Stripe API"
+    - "Start a new MCP server project — stdio transport"
+  should_not_trigger:
+    - "Explain what MCP is"
+    - "Which MCP servers does Claude Code support"
+    - "Debug my existing MCP server"
+    - "How do I install an MCP server in Claude Desktop"
+    - "Write a tutorial about MCP for my blog"
+
+eval-report-writer:
+  should_trigger:
+    - "Write up my benchmark results into a report"
+    - "Turn these eval numbers into a publishable report"
+    - "Generate a report from my benchmark run, audience is internal team"
+    - "Draft an investor-facing report on our eval comparing Model A vs B"
+    - "Write the methodology and results sections from these numbers"
+  should_not_trigger:
+    - "Help me run an eval on my model"
+    - "What metric should I use for evaluating RAG"
+    - "Set up an evaluation harness"
+    - "Tell me what 'BLEU score' means"
+    - "Write a marketing blog about our new model"
+
+benchmark-scaffold:
+  should_trigger:
+    - "Scaffold a benchmark project comparing three recommendation algorithms"
+    - "Set up a reproducible benchmark for forecasting models"
+    - "Bootstrap a comparison project for agent workflows"
+    - "I want to add a new architecture into my existing benchmark"
+    - "Build me a controlled comparison scaffold for ranking models"
+  should_not_trigger:
+    - "What's the best benchmark for evaluating LLMs"
+    - "Run an existing benchmark on my model"
+    - "Write me a benchmark — actually, just write a regression test"
+    - "Explain what BEIR is"
+    - "Help me pick which benchmark to publish"
