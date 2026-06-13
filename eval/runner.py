@@ -105,14 +105,17 @@ def run_trigger_eval(skill_filter: str | None, skill_pack: Path, source: str) ->
         per_prompt = []
 
         for prompt in prompts.get("should_trigger", []):
-            r = run_claude(prompt, skill_pack)
+            # Layer 1: only need to detect skill; kill after first assistant event
+            # so scaffolding skills don't run for 10+ minutes per prompt.
+            r = run_claude(prompt, skill_pack, timeout=90, stop_after_skill_event=True)
             loaded = skill_name in r.loaded_skills
             tp += int(loaded)
             fn += int(not loaded)
             per_prompt.append({"prompt": prompt, "expected": True, "loaded": loaded})
 
         for prompt in prompts.get("should_not_trigger", []):
-            r = run_claude(prompt, skill_pack)
+            # For non-trigger prompts Claude responds in one short turn (~10–30 s).
+            r = run_claude(prompt, skill_pack, timeout=90, stop_after_skill_event=True)
             loaded = skill_name in r.loaded_skills
             fp += int(loaded)
             tn += int(not loaded)
@@ -151,7 +154,9 @@ def run_behavior_eval(skill_filter: str | None, skill_pack: Path, source: str, j
         agreements: list[bool] = []
 
         for scenario in config["scenarios"]:
-            r = run_claude(scenario["prompt"], skill_pack)
+            # Layer 2 needs the full response to run assertions; scaffolding skills
+            # can take 10+ min. timeout=900 gives 15 min per scenario.
+            r = run_claude(scenario["prompt"], skill_pack, timeout=900)
             asserts = []
 
             for must_do in scenario.get("must_do", []):

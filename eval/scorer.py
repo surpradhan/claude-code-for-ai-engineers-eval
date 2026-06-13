@@ -4,10 +4,12 @@ The judge shells out to `claude -p` so it uses your Claude Max plan
 (no separate Anthropic API key required). Tradeoff: ~5x slower than the
 direct Anthropic API; ~15 min instead of ~5 min for a full Layer 2 run.
 
-VERIFY THESE FLAGS during Phase 1 of the handoff:
-  - Does your `claude` CLI accept `--model haiku` and `--model sonnet`?
-  - If it expects full model IDs (e.g. claude-haiku-4-5-20251001), swap in
-    CLI_MODEL_FLAGS below.
+Verified against Claude Code CLI v2.1.175 (2026-06-12):
+  - `--model haiku` and `--model sonnet` are accepted as aliases.
+  - Judge calls use --disable-slash-commands to prevent global skills from
+    loading and influencing the rubric evaluation.
+  - --output-format json (flat, no --verbose) is sufficient for judge calls
+    since we only need the "result" text, not skill invocation events.
 """
 
 import json
@@ -61,6 +63,7 @@ def _run_claude_judge(prompt: str, model: JudgeModel, timeout: int = 60) -> str:
         "claude", "-p", prompt,
         "--model", CLI_MODEL_FLAGS[model],
         "--output-format", "json",
+        "--disable-slash-commands",
     ]
     result = subprocess.run(
         args,
