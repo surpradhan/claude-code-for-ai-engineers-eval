@@ -80,9 +80,14 @@ def _run_claude_judge(prompt: str, model: JudgeModel, timeout: int = 60) -> str:
 
     try:
         payload = json.loads(result.stdout)
-        return payload.get("result") or payload.get("response") or result.stdout
+        text = payload.get("result") or payload.get("response") or result.stdout
     except json.JSONDecodeError:
-        return result.stdout
+        text = result.stdout
+
+    if "session limit" in text.lower() or "rate limit" in text.lower():
+        raise RuntimeError(f"claude CLI judge call hit session/rate limit: {text[:120]}")
+
+    return text
 
 
 def judge(

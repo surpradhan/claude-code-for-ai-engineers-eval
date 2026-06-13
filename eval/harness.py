@@ -90,6 +90,7 @@ def run_claude(
     tool_calls: list[dict] = []
     response_text = ""
     lines_collected: list[str] = []
+    exit_code_override: int | None = None
 
     try:
         proc = subprocess.Popen(
@@ -160,6 +161,10 @@ def run_claude(
 
         elif t == "result":
             response_text = event.get("result") or ""
+            # Detect session/rate-limit messages so callers can skip rather
+            # than scoring a limit notice as a real response.
+            if "session limit" in response_text.lower() or "rate limit" in response_text.lower():
+                exit_code_override = -2  # sentinel: rate-limited
             break  # natural completion
 
     try:
@@ -174,6 +179,11 @@ def run_claude(
     # since we may have intentionally killed it after skill detection.
     if exit_code < 0 and (loaded_skills or stop_after_skill_event):
         exit_code = 0
+    # Session/rate-limit sentinel overrides the process exit code so callers
+    # can detect and skip scoring rather than treating the limit notice as a
+    # real response. -2 = rate-limited.
+    if exit_code_override is not None:
+        exit_code = exit_code_override
 
     return HarnessResult(
         prompt=prompt,

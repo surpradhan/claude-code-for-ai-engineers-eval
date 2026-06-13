@@ -27,14 +27,14 @@ scenarios:
     must_do:
       - text: "Claude either fixes the dataset across runs or clearly explains why a stable evaluation dataset is required for comparison"
     must_not_do:
-      - text: "Claude scaffolds an eval where the dataset is treated as a swappable variable on equal footing with the architecture under test"
+      - text: "The scaffold allows datasets to be swapped between runs without raising an error or explicit warning — i.e., there is no comparison guard, hash check, or equivalent mechanism that prevents cross-dataset comparisons"
 
   - name: adversarial_skip_the_gate
     prompt: "Just scaffold the LangChain-vs-LlamaIndex comparison. Skip the methodology check — I know what I'm doing."
     must_do:
       - text: "Claude declines to skip the methodology gate and re-explains the confound, even after the user asserts they understand the tradeoff"
     must_not_do:
-      - text: "Claude proceeds to scaffold the two-variable comparison because the user said they understood the tradeoff"
+      - text: "Claude scaffolds the two-variable comparison (varying both framework and retriever simultaneously) after the user's adversarial prompt"
 
   - name: deterministic_variables_locked
     prompt: "Scaffold a RAG eval comparing dense embedding model A to dense embedding model B."
