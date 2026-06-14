@@ -176,10 +176,10 @@ def run_behavior_eval(skill_filter: str | None, skill_pack: Path, source: str, j
             asserts = []
 
             for must_do in scenario.get("must_do", []):
-                asserts.extend(_score_assertion(r.response_text, must_do, "must_do", judge_mode, agreements))
+                asserts.extend(_score_assertion(r.response_text, must_do, "must_do", judge_mode, agreements, scenario["prompt"]))
 
             for must_not in scenario.get("must_not_do", []):
-                asserts.extend(_score_assertion(r.response_text, must_not, "must_not_do", judge_mode, agreements))
+                asserts.extend(_score_assertion(r.response_text, must_not, "must_not_do", judge_mode, agreements, scenario["prompt"]))
 
             passed = sum(1 for a in asserts if a.passed)
             skill_results.append({
@@ -203,7 +203,8 @@ def run_behavior_eval(skill_filter: str | None, skill_pack: Path, source: str, j
 
 
 def _score_assertion(response_text: str, spec: dict, polarity: str,
-                     judge_mode: str, agreements: list) -> list:
+                     judge_mode: str, agreements: list,
+                     user_prompt: str | None = None) -> list:
     """Score a single assertion. Spec is either {regex: ...} or {text: ...}."""
     if "regex" in spec:
         must_match = polarity == "must_do"
@@ -211,10 +212,10 @@ def _score_assertion(response_text: str, spec: dict, polarity: str,
 
     text = spec["text"]
     if judge_mode == "calibrate":
-        h, s, agreed = judge_calibrate(response_text, text, polarity)
+        h, s, agreed = judge_calibrate(response_text, text, polarity, user_prompt=user_prompt)
         agreements.append(agreed)
         return [h, s]
-    return [judge(response_text, text, polarity, model=judge_mode)]
+    return [judge(response_text, text, polarity, model=judge_mode, user_prompt=user_prompt)]
 
 
 if __name__ == "__main__":

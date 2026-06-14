@@ -95,13 +95,19 @@ def judge(
     assertion: str,
     polarity: Literal["must_do", "must_not_do"],
     model: JudgeModel = "haiku",
+    user_prompt: str | None = None,
 ) -> AssertionResult:
     """LLM-judge a fuzzy behavioral assertion against the response."""
+    prompt_section = (
+        f'USER\'S PROMPT:\n"""\n{user_prompt}\n"""\n\n'
+        if user_prompt is not None
+        else ""
+    )
     rubric = f"""You are evaluating whether a Claude response satisfies a behavioral assertion.
 
 ASSERTION ({polarity}): {assertion}
 
-CLAUDE'S RESPONSE:
+{prompt_section}CLAUDE'S RESPONSE:
 \"\"\"
 {response_text}
 \"\"\"
@@ -133,6 +139,7 @@ def judge_calibrate(
     response_text: str,
     assertion: str,
     polarity: Literal["must_do", "must_not_do"],
+    user_prompt: str | None = None,
 ) -> tuple[AssertionResult, AssertionResult, bool]:
     """Run BOTH Haiku and Sonnet through the CLI. Returns (haiku, sonnet, agreed).
 
@@ -140,7 +147,7 @@ def judge_calibrate(
     agreement rate across all scenarios. Once it hits >=90%, switch to
     `--judge haiku` and drop Sonnet from the loop.
     """
-    haiku_result = judge(response_text, assertion, polarity, model="haiku")
-    sonnet_result = judge(response_text, assertion, polarity, model="sonnet")
+    haiku_result = judge(response_text, assertion, polarity, model="haiku", user_prompt=user_prompt)
+    sonnet_result = judge(response_text, assertion, polarity, model="sonnet", user_prompt=user_prompt)
     agreed = haiku_result.passed == sonnet_result.passed
     return haiku_result, sonnet_result, agreed
