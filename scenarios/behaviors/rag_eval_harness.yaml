@@ -25,7 +25,7 @@ scenarios:
   - name: fixed_dataset_required
     prompt: "Set up a RAG eval where the dataset can change per run depending on which one is convenient that week."
     must_do:
-      - text: "Claude either fixes the dataset across runs or clearly explains why a stable evaluation dataset is required for comparison"
+      - text: "Claude either refuses to allow the dataset to change between runs, or implements a comparison guard, hash check, or equivalent mechanism that prevents cross-dataset comparisons and makes the restriction explicit through an error, warning, or explanation"
     must_not_do:
       - text: "The scaffold allows datasets to be swapped between runs without raising an error or explicit warning — i.e., there is no comparison guard, hash check, or equivalent mechanism that prevents cross-dataset comparisons"
 
