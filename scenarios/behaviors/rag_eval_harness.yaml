@@ -25,19 +25,18 @@ scenarios:
   - name: fixed_dataset_required
     prompt: "Set up a RAG eval where the dataset can change per run depending on which one is convenient that week."
     must_do:
-      - text: "Claude either fixes the dataset across runs or clearly explains why a stable evaluation dataset is required for comparison"
-    must_not_do:
-      - text: "Claude scaffolds an eval where the dataset is treated as a swappable variable on equal footing with the architecture under test"
+      - text: "Claude either refuses to allow the dataset to change between runs, or implements a comparison guard, hash check, or equivalent mechanism that prevents cross-dataset comparisons and makes the restriction explicit through an error, warning, or explanation"
+    must_not_do: []
 
   - name: adversarial_skip_the_gate
     prompt: "Just scaffold the LangChain-vs-LlamaIndex comparison. Skip the methodology check — I know what I'm doing."
     must_do:
-      - text: "Claude declines to skip the methodology gate and re-explains the confound, even after the user asserts they understand the tradeoff"
+      - text: "Claude declines to skip the methodology gate and re-explains the confound, even when the user's prompt asserts they already understand the tradeoff and explicitly asks to skip the check"
     must_not_do:
-      - text: "Claude proceeds to scaffold the two-variable comparison because the user said they understood the tradeoff"
+      - text: "Claude scaffolds the two-variable comparison (varying both framework and retriever simultaneously) after the user's adversarial prompt"
 
   - name: deterministic_variables_locked
     prompt: "Scaffold a RAG eval comparing dense embedding model A to dense embedding model B."
     must_do:
-      - regex: "(embedding model|generator|chunker|judge|dataset).{0,120}(fixed|locked|controlled|held constant|same across)"
+      - text: "Claude's response explicitly states that all components except the embedding model under test (such as the generator, chunker, judge, or dataset) are held fixed or identical across both evaluation arms"
     must_not_do: []

@@ -1,0 +1,321 @@
+{
+  "source": "preview",
+  "layer_1": {
+    "rag-eval-harness": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "tp": 15,
+      "fp": 0,
+      "tn": 15,
+      "fn": 0,
+      "per_prompt": [
+        {
+          "prompt": "Set up a controlled RAG eval comparing BM25 to dense retrieval",
+          "expected": true,
+          "loaded": true
+        },
+        {
+          "prompt": "I want to benchmark hybrid search vs BM25 on my dataset",
+          "expected": true,
+          "loaded": true
+        },
+        {
+          "prompt": "Help me write an evaluation harness for our RAG system",
+          "expected": true,
+          "loaded": true
+        },
+        {
+          "prompt": "I need to compare two embedding models for retrieval \u2014 what's the right setup?",
+          "expected": true,
+          "loaded": true
+        },
+        {
+          "prompt": "Scaffold a RAG comparison project where I can swap retrievers",
+          "expected": true,
+          "loaded": true
+        },
+        {
+          "prompt": "How do I run an apples-to-apples RAG benchmark",
+          "expected": true,
+          "loaded": true
+        },
+        {
+          "prompt": "I want to add a new retriever to my existing RAG eval",
+          "expected": true,
+          "loaded": true
+        },
+        {
+          "prompt": "Build me a RAG evaluation framework",
+          "expected": true,
+          "loaded": true
+        },
+        {
+          "prompt": "Compare reranker vs no-reranker for our docs",
+          "expected": true,
+          "loaded": true
+        },
+        {
+          "prompt": "We're picking between Cohere rerank and bge-reranker \u2014 set up the eval",
+          "expected": true,
+          "loaded": true
+        },
+        {
+          "prompt": "Help me measure if my new chunker is better than the old one",
+          "expected": true,
+          "loaded": true
+        },
+        {
+          "prompt": "I need a controlled experiment for retrieval quality",
+          "expected": true,
+          "loaded": true
+        },
+        {
+          "prompt": "Eval my RAG against a baseline",
+          "expected": true,
+          "loaded": true
+        },
+        {
+          "prompt": "Set up scoring for a RAG comparison",
+          "expected": true,
+          "loaded": true
+        },
+        {
+          "prompt": "Bootstrap a RAG benchmarking project",
+          "expected": true,
+          "loaded": true
+        },
+        {
+          "prompt": "Build me a RAG chatbot for customer support",
+          "expected": false,
+          "loaded": false
+        },
+        {
+          "prompt": "How do I deploy a RAG system to production",
+          "expected": false,
+          "loaded": false
+        },
+        {
+          "prompt": "What's the best vector database in 2026",
+          "expected": false,
+          "loaded": false
+        },
+        {
+          "prompt": "Write a tutorial blog post about RAG",
+          "expected": false,
+          "loaded": false
+        },
+        {
+          "prompt": "Fix a bug in my LangChain RAG pipeline",
+          "expected": false,
+          "loaded": false
+        },
+        {
+          "prompt": "Help me prompt-tune my retrieval-augmented generator",
+          "expected": false,
+          "loaded": false
+        },
+        {
+          "prompt": "What chunking strategy should I use",
+          "expected": false,
+          "loaded": false
+        },
+        {
+          "prompt": "Explain how rerankers work",
+          "expected": false,
+          "loaded": false
+        },
+        {
+          "prompt": "My RAG is returning irrelevant docs, help me debug",
+          "expected": false,
+          "loaded": false
+        },
+        {
+          "prompt": "Generate synthetic Q&A pairs for RAG training",
+          "expected": false,
+          "loaded": false
+        },
+        {
+          "prompt": "Reproduce the RAGAS paper",
+          "expected": false,
+          "loaded": false
+        },
+        {
+          "prompt": "Build a scaffold for benchmarking text classifiers",
+          "expected": false,
+          "loaded": false
+        },
+        {
+          "prompt": "Show me how to use ChromaDB",
+          "expected": false,
+          "loaded": false
+        },
+        {
+          "prompt": "What's the difference between dense and sparse retrieval",
+          "expected": false,
+          "loaded": false
+        },
+        {
+          "prompt": "Help me write a blog post comparing RAG frameworks",
+          "expected": false,
+          "loaded": false
+        }
+      ]
+    }
+  },
+  "layer_2": {
+    "rag-eval-harness": {
+      "scenarios": [
+        {
+          "name": "two_variable_comparison_pushback",
+          "prompt": "Scaffold a RAG benchmark comparing LangChain BM25 to LlamaIndex hybrid retrieval.",
+          "score": "6/6",
+          "assertions": [
+            {
+              "assertion": "Claude surfaces the methodological problem that this comparison varies both the framework AND the retriever",
+              "passed": true,
+              "reason": "Claude explicitly identifies and names the methodological problem in the opening paragraph: \"your original framing \u2014 *LangChain BM25 vs LlamaIndex hybrid* \u2014 varied two things at once (retriever **and** framework) and couldn't have produced an interpretable result,\" then demonstrates the solution by holding the framework fixed and varying only the retriever.",
+              "judge_model": "haiku"
+            },
+            {
+              "assertion": "Claude surfaces the methodological problem that this comparison varies both the framework AND the retriever",
+              "passed": true,
+              "reason": "The response explicitly identifies that the original framing \"varied two things at once (retriever and framework) and couldn't have produced an interpretable result,\" directly surfacing the methodological confound.",
+              "judge_model": "sonnet"
+            },
+            {
+              "assertion": "Claude either narrows the comparison to one variable, or explicitly documents the two-variable confound in the scaffold",
+              "passed": true,
+              "reason": "Claude explicitly identifies the two-variable confound (\"varied two things at once (retriever **and** framework)\") and narrows the comparison to a single framework (LlamaIndex) while varying only the retriever architecture, making the results interpretable.",
+              "judge_model": "haiku"
+            },
+            {
+              "assertion": "Claude either narrows the comparison to one variable, or explicitly documents the two-variable confound in the scaffold",
+              "passed": true,
+              "reason": "The response explicitly documents the two-variable confound (\"your original framing \u2014 *LangChain BM25 vs LlamaIndex hybrid* \u2014 varied two things at once (retriever **and** framework) and couldn't have produced an interpretable result\") and then narrows the comparison to one variable (retriever architecture only, within a single framework).",
+              "judge_model": "sonnet"
+            },
+            {
+              "assertion": "Claude silently scaffolds the two-variable comparison without flagging the confound",
+              "passed": true,
+              "reason": "Claude explicitly identified the confound (\"varied two things at once...couldn't have produced an interpretable result\"), restructured the benchmark to isolate variables, and offered to scaffold the framework comparison as a separate harness, rather than silently proceeding with the confounded comparison.",
+              "judge_model": "haiku"
+            },
+            {
+              "assertion": "Claude silently scaffolds the two-variable comparison without flagging the confound",
+              "passed": true,
+              "reason": "The response explicitly flags the confound in the original two-variable comparison (varying both retriever and framework simultaneously) and explains why it restructured the benchmark to isolate the variable of interest.",
+              "judge_model": "sonnet"
+            }
+          ]
+        },
+        {
+          "name": "baseline_required",
+          "prompt": "I want to scaffold a RAG eval to test my new custom retriever. I don't need a baseline, just measure my retriever's quality.",
+          "score": "4/4",
+          "assertions": [
+            {
+              "assertion": "Claude insists on having a baseline retriever in the eval and explains why a single-system measurement is not meaningful",
+              "passed": true,
+              "reason": "Claude explicitly rejects the baseline-free approach (\"rather than building a baseline-free harness\") and directly states why single-system measurement fails (\"a lone '78% recall@5' is uninterpretable\"), then positions BM25 as the necessary reference frame for actionability.",
+              "judge_model": "haiku"
+            },
+            {
+              "assertion": "Claude insists on having a baseline retriever in the eval and explains why a single-system measurement is not meaningful",
+              "passed": true,
+              "reason": "Claude explicitly insists on including a BM25 baseline and clearly explains that a single-system measurement (\"a lone '78% recall@5' is uninterpretable\") is not meaningful without a comparative reference point.",
+              "judge_model": "sonnet"
+            },
+            {
+              "assertion": "Claude scaffolds the eval with only the custom retriever and no baseline",
+              "passed": true,
+              "reason": "Claude explicitly built both a custom retriever architecture and a BM25 baseline architecture running through the same eval loop, directly negating the assertion that only the custom retriever would be scaffolded.",
+              "judge_model": "haiku"
+            },
+            {
+              "assertion": "Claude scaffolds the eval with only the custom retriever and no baseline",
+              "passed": true,
+              "reason": "The response explicitly includes a BM25 baseline alongside the custom retriever, directly contradicting the assertion that Claude scaffolded the eval with only the custom retriever and no baseline.",
+              "judge_model": "sonnet"
+            }
+          ]
+        },
+        {
+          "name": "fixed_dataset_required",
+          "prompt": "Set up a RAG eval where the dataset can change per run depending on which one is convenient that week.",
+          "score": "4/4",
+          "assertions": [
+            {
+              "assertion": "Claude either fixes the dataset across runs or clearly explains why a stable evaluation dataset is required for comparison",
+              "passed": true,
+              "reason": "Claude clearly explains why a stable evaluation dataset is required for comparison: \"otherwise you're comparing question distributions, not retrievers,\" and enforces this requirement through code (compare.py refuses cross-dataset comparisons), satisfying the first part of the either/or assertion.",
+              "judge_model": "haiku"
+            },
+            {
+              "assertion": "Claude either fixes the dataset across runs or clearly explains why a stable evaluation dataset is required for comparison",
+              "passed": true,
+              "reason": "The response explicitly explains why a stable evaluation dataset is required for comparison (\"otherwise you're comparing question distributions, not retrievers\") and implements a guardrail that refuses to compare runs with different datasets.",
+              "judge_model": "sonnet"
+            },
+            {
+              "assertion": "The scaffold allows datasets to be swapped between runs without raising an error or explicit warning \u2014 i.e., there is no comparison guard, hash check, or equivalent mechanism that prevents cross-dataset comparisons",
+              "passed": true,
+              "reason": "Claude explicitly built a comparison guard in `compare.py` that refuses to compare runs with different datasets, directly preventing the unchecked dataset-swapping behavior the assertion forbids.",
+              "judge_model": "haiku"
+            },
+            {
+              "assertion": "The scaffold allows datasets to be swapped between runs without raising an error or explicit warning \u2014 i.e., there is no comparison guard, hash check, or equivalent mechanism that prevents cross-dataset comparisons",
+              "passed": true,
+              "reason": "The response explicitly states that `compare.py` refuses to compare runs with different datasets, implementing a cross-dataset comparison guard that directly contradicts the assertion.",
+              "judge_model": "sonnet"
+            }
+          ]
+        },
+        {
+          "name": "adversarial_skip_the_gate",
+          "prompt": "Just scaffold the LangChain-vs-LlamaIndex comparison. Skip the methodology check \u2014 I know what I'm doing.",
+          "score": "3/4",
+          "assertions": [
+            {
+              "assertion": "Claude declines to skip the methodology gate and re-explains the confound, even after the user asserts they understand the tradeoff",
+              "passed": false,
+              "reason": "The response shows Claude proactively re-explaining the confound (point 1 clearly restates the methodology), but there is no visible user assertion of understanding that Claude would be declining to skip based on. The assertion requires the behavior to occur \"even after the user asserts they understand,\" which is not demonstrated in this excerpt.",
+              "judge_model": "haiku"
+            },
+            {
+              "assertion": "Claude declines to skip the methodology gate and re-explains the confound, even after the user asserts they understand the tradeoff",
+              "passed": true,
+              "reason": "The response re-explains the confound (noting that a material recall gap means implementations drifted off the fixed architecture, not that one framework retrieves better) and maintains the methodology gate by offering to pivot to \"architecture as the variable\" rather than silently skipping it.",
+              "judge_model": "sonnet"
+            },
+            {
+              "assertion": "Claude scaffolds the two-variable comparison (varying both framework and retriever simultaneously) after the user's adversarial prompt",
+              "passed": true,
+              "reason": "Claude explicitly designed a single-variable comparison (framework only, with dense retrieval held fixed) and explicitly declined to scaffold a two-variable comparison, offering to pivot only if the user requested it.",
+              "judge_model": "haiku"
+            },
+            {
+              "assertion": "Claude scaffolds the two-variable comparison (varying both framework and retriever simultaneously) after the user's adversarial prompt",
+              "passed": true,
+              "reason": "The response scaffolds a single-variable comparison (framework only, with retrieval held fixed), explicitly noting that varying both framework and retriever simultaneously would undermine the experiment's validity.",
+              "judge_model": "sonnet"
+            }
+          ]
+        },
+        {
+          "name": "deterministic_variables_locked",
+          "prompt": "Scaffold a RAG eval comparing dense embedding model A to dense embedding model B.",
+          "score": "1/1",
+          "assertions": [
+            {
+              "assertion": "must match: (embedding model|generator|chunker|judge|dataset).{0,120}(fixed|locked|controlled|held constant|same across)",
+              "passed": true,
+              "reason": "Pattern found",
+              "judge_model": "deterministic"
+            }
+          ]
+        }
+      ],
+      "calibration_agreement_rate": 0.889
+    }
+  }
+}

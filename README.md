@@ -5,13 +5,23 @@ A test harness for Claude Code skill packs. Built originally for the [Claude Cod
 1. **Triggering works.** Each skill loads on the right prompts and stays silent on near-misses.
 2. **Behavior holds.** When a skill loads, Claude actually follows its gates instead of skipping them.
 
+## Verified by self-test
+
+Last run: 2026-06-15. Source: preview pack. Claude Code CLI v2.1.175.
+
+**Layer 1 — trigger eval (`rag-eval-harness`):** precision **1.000**, recall **1.000** (15 TP / 0 FP / 15 TN / 0 FN).
+
+**Layer 2 — behavior assertion:** 9/9 assertions pass across 5 scenarios, including an adversarial prompt that explicitly asks Claude to skip the methodology gate. Production judge: Haiku. Haiku/Sonnet calibration agreement (from the 2026-06-14 `--judge calibrate` run, prior to switching to Haiku-only): **1.000**.
+
+[Full report →](results/20260615-072714/report.md)
+
 ## What it tests
 
 | Layer | What it checks | Cost per run |
 |---|---|---|
-| 1. Trigger eval | Right skill loads on right prompts | Cents |
-| 2. Behavior assertion | When loaded, Claude follows the gates | $1–3 |
-| 3. Artifact validation | For scaffolders — does the generated project run? | $5–15 |
+| 1. Trigger eval | Right skill loads on right prompts | Max plan |
+| 2. Behavior assertion | When loaded, Claude follows the gates | Max plan |
+| 3. Artifact validation | For scaffolders — does the generated project run? | Max plan + Docker |
 | 4. Adversarial + regression | Can engineered prompts skip the gates? | Tracked in 1 + 2 |
 
 ## Two sources, two scorecards

@@ -1,17 +1,37 @@
 """Subprocess wrapper around the Claude Code CLI.
 
-VERIFY THESE FLAGS against your installed Claude Code version before relying
-on results. The CLI moves fast.
+Verified against Claude Code CLI v2.1.175 (2026-06-12).
 
-Approach: create a temp workdir with `.claude/skills/` symlinked to the skill
-pack, then `cd` into it and run `claude -p "<prompt>" --output-format json`.
-Claude Code discovers skills via its standard skill discovery, so the loaded
-skills appear in the JSON metadata.
+Invocation:
+    claude -p "<prompt>"
+        --output-format stream-json --verbose
+            → NDJSON stream; each line is one event.
+            → assistant events expose Skill tool_use entries.
+            → result event holds the final response text.
+        --permission-mode bypassPermissions
+            → scaffolding skills can write files without interactive approval.
+        --setting-sources project
+            → only load the workdir's .claude/skills/; skip ~/.claude/skills/
+              so global skill packs don't compete with the pack under test.
+
+Skill detection: look for events with type=="assistant" whose
+message.content[] contains a tool_use entry with name=="Skill".
+The input.skill field names the skill.
+
+Two execution modes (controlled by stop_after_skill_event):
+  - False (default, Layer 2): stream until the result event arrives or timeout.
+    response_text is populated from the result event.
+  - True (Layer 1): kill the process as soon as the first assistant event
+    arrives (Skill invocations appear in the first assistant turn, within
+    ~3–5 s). This avoids waiting 10+ minutes for scaffolding to complete
+    when we only care about trigger detection.
 """
 
 import json
 import subprocess
 import tempfile
+import threading
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -33,6 +53,7 @@ def run_claude(
     skill_pack_path: Path,
     workdir: Optional[Path] = None,
     timeout: int = 180,
+    stop_after_skill_event: bool = False,
 ) -> HarnessResult:
     """Invoke Claude Code with the given prompt and skill pack.
 
@@ -41,75 +62,144 @@ def run_claude(
         skill_pack_path: Path to the directory containing SKILL.md files
             (typically `<repo>/skill-pack/skills/`).
         workdir: Optional working directory. If None, creates a temp dir.
-        timeout: Subprocess timeout in seconds.
+        timeout: Subprocess timeout in seconds. Use ~60 for Layer 1
+            (stop_after_skill_event=True) and ~600 for Layer 2.
+        stop_after_skill_event: If True, kill the process after the first
+            assistant event (Skill invocations appear here). Avoids waiting
+            for scaffolding to complete during Layer 1 trigger evals.
 
     Returns:
         HarnessResult with response text, loaded skills, and tool calls.
     """
-    cleanup = False
+    # Own the temp dir only when we created it; try/finally ensures cleanup on
+    # every exit path including early returns and exceptions.
+    _tmp_dir = None
     if workdir is None:
-        workdir = Path(tempfile.mkdtemp(prefix="claude-eval-"))
-        cleanup = True
-
-    skills_link = workdir / ".claude" / "skills"
-    skills_link.parent.mkdir(parents=True, exist_ok=True)
-    if not skills_link.exists():
-        skills_link.symlink_to(skill_pack_path.resolve())
-
-    args = ["claude", "-p", prompt, "--output-format", "json"]
+        _tmp_dir = tempfile.TemporaryDirectory(prefix="claude-eval-")
+        workdir = Path(_tmp_dir.name)
 
     try:
-        result = subprocess.run(
-            args,
-            cwd=workdir,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-    except subprocess.TimeoutExpired as e:
+        skills_link = workdir / ".claude" / "skills"
+        skills_link.parent.mkdir(parents=True, exist_ok=True)
+        # Guard is safe because callers that pass an explicit workdir are responsible
+        # for ensuring the symlink isn't stale; our callers always pass None (temp dir).
+        if not skills_link.exists():
+            skills_link.symlink_to(skill_pack_path.resolve())
+
+        args = [
+            "claude", "-p", prompt,
+            "--output-format", "stream-json",
+            "--verbose",
+            "--permission-mode", "bypassPermissions",
+            "--setting-sources", "project",
+        ]
+
+        loaded_skills: list[str] = []
+        tool_calls: list[dict] = []
+        response_text = ""
+        lines_collected: list[str] = []
+        exit_code_override: int | None = None
+
+        try:
+            proc = subprocess.Popen(
+                args,
+                cwd=workdir,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+        except FileNotFoundError:
+            return HarnessResult(
+                prompt=prompt,
+                response_text="",
+                exit_code=-1,
+                raw_stderr="claude CLI not found in PATH",
+            )
+
+        # Read stdout in a background thread so we can enforce a wall-clock timeout
+        # without relying on subprocess.run(timeout=) (which doesn't let us inspect
+        # partial output before raising).
+        stderr_buf: list[str] = []
+
+        def _read_stderr():
+            for line in proc.stderr:
+                stderr_buf.append(line)
+
+        stderr_thread = threading.Thread(target=_read_stderr, daemon=True)
+        stderr_thread.start()
+
+        deadline = time.monotonic() + timeout
+
+        for line in proc.stdout:
+            lines_collected.append(line)
+            if time.monotonic() > deadline:
+                proc.kill()
+                break
+
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+            t = event.get("type")
+
+            if t == "assistant":
+                msg = event.get("message", {})
+                content = msg.get("content", []) if isinstance(msg, dict) else []
+                for c in content:
+                    if not isinstance(c, dict):
+                        continue
+                    if c.get("type") == "tool_use":
+                        name = c.get("name", "")
+                        inp = c.get("input") or {}
+                        tool_calls.append({"name": name, "input": inp})
+                        if name == "Skill":
+                            skill_name = inp.get("skill")
+                            if skill_name and skill_name not in loaded_skills:
+                                loaded_skills.append(skill_name)
+                            # For Layer 1: we have what we need; kill to avoid
+                            # waiting 10+ min for scaffolding to complete.
+                            if stop_after_skill_event:
+                                proc.kill()
+
+            elif t == "result":
+                response_text = event.get("result") or ""
+                # Detect session/rate-limit messages so callers can skip rather
+                # than scoring a limit notice as a real response.
+                if "session limit" in response_text.lower() or "rate limit" in response_text.lower():
+                    exit_code_override = -2  # sentinel: rate-limited
+                break  # natural completion
+
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+
+        stderr_thread.join(timeout=2)
+
+        exit_code = proc.returncode if proc.returncode is not None else -1
+        # A killed process returns -9 (SIGKILL); treat it as success for eval purposes
+        # since we may have intentionally killed it after skill detection.
+        if exit_code < 0 and (loaded_skills or stop_after_skill_event):
+            exit_code = 0
+        # Session/rate-limit sentinel overrides the process exit code so callers
+        # can detect and skip scoring rather than treating the limit notice as a
+        # real response. -2 = rate-limited.
+        if exit_code_override is not None:
+            exit_code = exit_code_override
+
         return HarnessResult(
             prompt=prompt,
-            response_text="",
-            exit_code=-1,
-            raw_stderr=f"TIMEOUT after {timeout}s: {e}",
+            response_text=response_text,
+            loaded_skills=loaded_skills,
+            tool_calls=tool_calls,
+            exit_code=exit_code,
+            raw_stdout="".join(lines_collected),
+            raw_stderr="".join(stderr_buf),
         )
-
-    response_text = ""
-    loaded_skills: list[str] = []
-    tool_calls: list[dict] = []
-
-    try:
-        payload = json.loads(result.stdout)
-        response_text = payload.get("result") or payload.get("response") or ""
-        # Exact path to "which skills loaded" depends on Claude Code version.
-        # Check `payload` shape on first run and adapt.
-        loaded_skills = payload.get("loaded_skills") or _extract_skills_from_payload(payload)
-        tool_calls = payload.get("tool_calls") or payload.get("tools_used") or []
-    except (json.JSONDecodeError, AttributeError):
-        response_text = result.stdout
-
-    return HarnessResult(
-        prompt=prompt,
-        response_text=response_text,
-        loaded_skills=loaded_skills,
-        tool_calls=tool_calls,
-        exit_code=result.returncode,
-        raw_stdout=result.stdout,
-        raw_stderr=result.stderr,
-    )
-
-
-def _extract_skills_from_payload(payload: dict) -> list[str]:
-    """Best-effort fallback: walk the payload looking for skill invocations.
-
-    Claude Code's JSON output structure for "which skills loaded" may vary;
-    look for tool calls named `Skill` or messages mentioning loaded skills.
-    """
-    skills: set[str] = set()
-    for item in payload.get("messages", []):
-        for c in item.get("content", []) if isinstance(item, dict) else []:
-            if isinstance(c, dict) and c.get("type") == "tool_use" and c.get("name") == "Skill":
-                skill_name = (c.get("input") or {}).get("skill")
-                if skill_name:
-                    skills.add(skill_name)
-    return sorted(skills)
+    finally:
+        if _tmp_dir is not None:
+            _tmp_dir.cleanup()

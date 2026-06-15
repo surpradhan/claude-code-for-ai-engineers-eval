@@ -4,10 +4,14 @@ __pycache__/
 .venv/
 venv/
 .env
-results/
+results/*
+!results/.gitkeep
 .pytest_cache/
 .ruff_cache/
 .DS_Store
+
+# Claude Code local config / session state.
+.claude/
 
 # Full (paid) skill pack — local-only, never committed.
 # Symlink or unzip the Gumroad pack contents into this directory:
