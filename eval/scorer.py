@@ -4,10 +4,12 @@ The judge shells out to `claude -p` so it uses your Claude Max plan
 (no separate Anthropic API key required). Tradeoff: ~5x slower than the
 direct Anthropic API; ~15 min instead of ~5 min for a full Layer 2 run.
 
-VERIFY THESE FLAGS during Phase 1 of the handoff:
-  - Does your `claude` CLI accept `--model haiku` and `--model sonnet`?
-  - If it expects full model IDs (e.g. claude-haiku-4-5-20251001), swap in
-    CLI_MODEL_FLAGS below.
+Verified against Claude Code CLI v2.1.175 (2026-06-12):
+  - `--model haiku` and `--model sonnet` are accepted as aliases.
+  - Judge calls use --disable-slash-commands to prevent global skills from
+    loading and influencing the rubric evaluation.
+  - --output-format json (flat, no --verbose) is sufficient for judge calls
+    since we only need the "result" text, not skill invocation events.
 """
 
 import json
@@ -61,6 +63,7 @@ def _run_claude_judge(prompt: str, model: JudgeModel, timeout: int = 60) -> str:
         "claude", "-p", prompt,
         "--model", CLI_MODEL_FLAGS[model],
         "--output-format", "json",
+        "--disable-slash-commands",
     ]
     result = subprocess.run(
         args,
@@ -77,9 +80,14 @@ def _run_claude_judge(prompt: str, model: JudgeModel, timeout: int = 60) -> str:
 
     try:
         payload = json.loads(result.stdout)
-        return payload.get("result") or payload.get("response") or result.stdout
+        text = payload.get("result") or payload.get("response") or result.stdout
     except json.JSONDecodeError:
-        return result.stdout
+        text = result.stdout
+
+    if "session limit" in text.lower() or "rate limit" in text.lower():
+        raise RuntimeError(f"claude CLI judge call hit session/rate limit: {text[:120]}")
+
+    return text
 
 
 def judge(
@@ -87,13 +95,19 @@ def judge(
     assertion: str,
     polarity: Literal["must_do", "must_not_do"],
     model: JudgeModel = "haiku",
+    user_prompt: str | None = None,
 ) -> AssertionResult:
     """LLM-judge a fuzzy behavioral assertion against the response."""
+    prompt_section = (
+        f'USER\'S PROMPT:\n"""\n{user_prompt}\n"""\n\n'
+        if user_prompt is not None
+        else ""
+    )
     rubric = f"""You are evaluating whether a Claude response satisfies a behavioral assertion.
 
 ASSERTION ({polarity}): {assertion}
 
-CLAUDE'S RESPONSE:
+{prompt_section}CLAUDE'S RESPONSE:
 \"\"\"
 {response_text}
 \"\"\"
@@ -125,6 +139,7 @@ def judge_calibrate(
     response_text: str,
     assertion: str,
     polarity: Literal["must_do", "must_not_do"],
+    user_prompt: str | None = None,
 ) -> tuple[AssertionResult, AssertionResult, bool]:
     """Run BOTH Haiku and Sonnet through the CLI. Returns (haiku, sonnet, agreed).
 
@@ -132,7 +147,7 @@ def judge_calibrate(
     agreement rate across all scenarios. Once it hits >=90%, switch to
     `--judge haiku` and drop Sonnet from the loop.
     """
-    haiku_result = judge(response_text, assertion, polarity, model="haiku")
-    sonnet_result = judge(response_text, assertion, polarity, model="sonnet")
+    haiku_result = judge(response_text, assertion, polarity, model="haiku", user_prompt=user_prompt)
+    sonnet_result = judge(response_text, assertion, polarity, model="sonnet", user_prompt=user_prompt)
     agreed = haiku_result.passed == sonnet_result.passed
     return haiku_result, sonnet_result, agreed

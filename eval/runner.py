@@ -105,14 +105,23 @@ def run_trigger_eval(skill_filter: str | None, skill_pack: Path, source: str) ->
         per_prompt = []
 
         for prompt in prompts.get("should_trigger", []):
-            r = run_claude(prompt, skill_pack)
+            # Layer 1: only need to detect skill; kill after first assistant event
+            # so scaffolding skills don't run for 10+ minutes per prompt.
+            r = run_claude(prompt, skill_pack, timeout=90, stop_after_skill_event=True)
+            if r.exit_code == -2:
+                per_prompt.append({"prompt": prompt, "expected": True, "loaded": None, "skipped": "rate_limited"})
+                continue
             loaded = skill_name in r.loaded_skills
             tp += int(loaded)
             fn += int(not loaded)
             per_prompt.append({"prompt": prompt, "expected": True, "loaded": loaded})
 
         for prompt in prompts.get("should_not_trigger", []):
-            r = run_claude(prompt, skill_pack)
+            # For non-trigger prompts Claude responds in one short turn (~10–30 s).
+            r = run_claude(prompt, skill_pack, timeout=90, stop_after_skill_event=True)
+            if r.exit_code == -2:
+                per_prompt.append({"prompt": prompt, "expected": False, "loaded": None, "skipped": "rate_limited"})
+                continue
             loaded = skill_name in r.loaded_skills
             fp += int(loaded)
             tn += int(not loaded)
@@ -151,20 +160,47 @@ def run_behavior_eval(skill_filter: str | None, skill_pack: Path, source: str, j
         agreements: list[bool] = []
 
         for scenario in config["scenarios"]:
-            r = run_claude(scenario["prompt"], skill_pack)
+            # Layer 2 needs the full response to run assertions; scaffolding skills
+            # can take 10+ min. timeout=900 gives 15 min per scenario.
+            r = run_claude(scenario["prompt"], skill_pack, timeout=900)
+            if r.exit_code == -2:
+                skill_results.append({
+                    "name": scenario["name"],
+                    "prompt": scenario["prompt"],
+                    "score": "skipped",
+                    "skipped": "rate_limited",
+                    "assertions": [],
+                })
+                console.print(f"    [dim]{scenario['name']} — skipped (rate limited)[/dim]")
+                continue
             asserts = []
 
+            judge_rate_limited = False
             for must_do in scenario.get("must_do", []):
-                asserts.extend(_score_assertion(r.response_text, must_do, "must_do", judge_mode, agreements))
+                try:
+                    asserts.extend(_score_assertion(r.response_text, must_do, "must_do", judge_mode, agreements, user_prompt=scenario["prompt"]))
+                except RuntimeError as e:
+                    if "rate limit" in str(e).lower() or "session limit" in str(e).lower():
+                        judge_rate_limited = True
+                        console.print(f"    [dim]{scenario['name']} — judge rate limited, skipping remaining assertions[/dim]")
+                        break
+                    raise
 
-            for must_not in scenario.get("must_not_do", []):
-                asserts.extend(_score_assertion(r.response_text, must_not, "must_not_do", judge_mode, agreements))
+            if not judge_rate_limited:
+                for must_not in scenario.get("must_not_do", []):
+                    try:
+                        asserts.extend(_score_assertion(r.response_text, must_not, "must_not_do", judge_mode, agreements, user_prompt=scenario["prompt"]))
+                    except RuntimeError as e:
+                        if "rate limit" in str(e).lower() or "session limit" in str(e).lower():
+                            console.print(f"    [dim]{scenario['name']} — judge rate limited, skipping remaining assertions[/dim]")
+                            break
+                        raise
 
             passed = sum(1 for a in asserts if a.passed)
             skill_results.append({
                 "name": scenario["name"],
                 "prompt": scenario["prompt"],
-                "score": f"{passed}/{len(asserts)}",
+                "score": f"{passed}/{len(asserts)}" if asserts else "skipped",
                 "assertions": [asdict(a) for a in asserts],
             })
 
@@ -182,7 +218,8 @@ def run_behavior_eval(skill_filter: str | None, skill_pack: Path, source: str, j
 
 
 def _score_assertion(response_text: str, spec: dict, polarity: str,
-                     judge_mode: str, agreements: list) -> list:
+                     judge_mode: str, agreements: list,
+                     user_prompt: str | None = None) -> list:
     """Score a single assertion. Spec is either {regex: ...} or {text: ...}."""
     if "regex" in spec:
         must_match = polarity == "must_do"
@@ -190,10 +227,10 @@ def _score_assertion(response_text: str, spec: dict, polarity: str,
 
     text = spec["text"]
     if judge_mode == "calibrate":
-        h, s, agreed = judge_calibrate(response_text, text, polarity)
+        h, s, agreed = judge_calibrate(response_text, text, polarity, user_prompt=user_prompt)
         agreements.append(agreed)
         return [h, s]
-    return [judge(response_text, text, polarity, model=judge_mode)]
+    return [judge(response_text, text, polarity, model=judge_mode, user_prompt=user_prompt)]
 
 
 if __name__ == "__main__":
