@@ -64,7 +64,11 @@ def _polarity_for(assertion_text: str, polarity_map: dict) -> str:
 def render(results_json: Path) -> str:
     data = json.loads(results_json.read_text())
     source = data.get("source", "unknown")
-    out = ["# Skill eval report", f"_Source: `{results_json}` (pack: **{source}**)_", ""]
+    try:
+        display_path = results_json.relative_to(REPO_ROOT)
+    except ValueError:
+        display_path = results_json
+    out = ["# Skill eval report", f"_Source: `{display_path}` (pack: **{source}**)_", ""]
     polarity_idx = _load_polarity_index()
 
     if "layer_1" in data:

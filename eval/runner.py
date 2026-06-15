@@ -62,7 +62,7 @@ def main(layer: tuple[str, ...], skill: str | None, source: str, judge_mode: str
             "`git submodule update --init`?"
         )
 
-    run_id = time.strftime("%Y%m%d-%H%M%S")
+    run_id = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
     out_dir = RESULTS_DIR / run_id
     out_dir.mkdir(parents=True, exist_ok=True)
     console.print(f"[dim]Run ID: {run_id}  |  source: {source}  |  pack: {skill_pack}[/dim]")
@@ -85,7 +85,11 @@ def _skill_in_source(skill_name: str, source: str) -> bool:
     """Is this skill expected to be present given the chosen source?"""
     required = SKILL_SOURCES.get(skill_name)
     if required is None:
-        return True  # unknown skill — assume it's there
+        console.print(
+            f"  [yellow]Warning: {skill_name!r} not in SKILL_SOURCES; "
+            "assuming present. Add it to SKILL_SOURCES to suppress this.[/yellow]"
+        )
+        return True
     return source == "full" or required == "preview"
 
 
@@ -117,7 +121,9 @@ def run_trigger_eval(skill_filter: str | None, skill_pack: Path, source: str) ->
             per_prompt.append({"prompt": prompt, "expected": True, "loaded": loaded})
 
         for prompt in prompts.get("should_not_trigger", []):
-            # For non-trigger prompts Claude responds in one short turn (~10–30 s).
+            # stop_after_skill_event=True here is about correctness, not speed:
+            # we want to detect whether a skill fires in the first assistant turn.
+            # If no Skill tool_use appears, loaded_skills stays empty → TN.
             r = run_claude(prompt, skill_pack, timeout=90, stop_after_skill_event=True)
             if r.exit_code == -2:
                 per_prompt.append({"prompt": prompt, "expected": False, "loaded": None, "skipped": "rate_limited"})

@@ -71,11 +71,16 @@ def run_claude(
     Returns:
         HarnessResult with response text, loaded skills, and tool calls.
     """
+    # Own the temp dir only when we created it; clean it up before returning.
+    _tmp_dir = None
     if workdir is None:
-        workdir = Path(tempfile.mkdtemp(prefix="claude-eval-"))
+        _tmp_dir = tempfile.TemporaryDirectory(prefix="claude-eval-")
+        workdir = Path(_tmp_dir.name)
 
     skills_link = workdir / ".claude" / "skills"
     skills_link.parent.mkdir(parents=True, exist_ok=True)
+    # Guard is safe because callers that pass an explicit workdir are responsible
+    # for ensuring the symlink isn't stale; our callers always pass None (temp dir).
     if not skills_link.exists():
         skills_link.symlink_to(skill_pack_path.resolve())
 
@@ -184,7 +189,7 @@ def run_claude(
     if exit_code_override is not None:
         exit_code = exit_code_override
 
-    return HarnessResult(
+    result = HarnessResult(
         prompt=prompt,
         response_text=response_text,
         loaded_skills=loaded_skills,
@@ -193,3 +198,6 @@ def run_claude(
         raw_stdout="".join(lines_collected),
         raw_stderr="".join(stderr_buf),
     )
+    if _tmp_dir is not None:
+        _tmp_dir.cleanup()
+    return result

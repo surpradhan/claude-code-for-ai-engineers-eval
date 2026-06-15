@@ -11,7 +11,7 @@ Last run: 2026-06-15. Source: preview pack. Claude Code CLI v2.1.175.
 
 **Layer 1 — trigger eval (`rag-eval-harness`):** precision **1.000**, recall **1.000** (15 TP / 0 FP / 15 TN / 0 FN).
 
-**Layer 2 — behavior assertion:** 9/9 assertions pass across 5 scenarios, including an adversarial prompt that explicitly asks Claude to skip the methodology gate. Production judge: Haiku. Haiku/Sonnet calibration agreement on the same scenarios: **1.000**.
+**Layer 2 — behavior assertion:** 9/9 assertions pass across 5 scenarios, including an adversarial prompt that explicitly asks Claude to skip the methodology gate. Production judge: Haiku. Haiku/Sonnet calibration agreement (from the 2026-06-14 `--judge calibrate` run, prior to switching to Haiku-only): **1.000**.
 
 [Full report →](results/20260615-072714/report.md)
 

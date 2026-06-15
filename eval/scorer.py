@@ -58,20 +58,24 @@ def _run_claude_judge(prompt: str, model: JudgeModel, timeout: int = 60) -> str:
     response isn't itself modulated by any loaded skills. The judge needs to
     behave like a plain Claude, not like a skill-pack-loaded Claude.
     """
-    workdir = Path(tempfile.mkdtemp(prefix="claude-judge-"))
     args = [
         "claude", "-p", prompt,
         "--model", CLI_MODEL_FLAGS[model],
         "--output-format", "json",
         "--disable-slash-commands",
     ]
-    result = subprocess.run(
-        args,
-        cwd=workdir,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-    )
+    with tempfile.TemporaryDirectory(prefix="claude-judge-") as _workdir:
+        try:
+            result = subprocess.run(
+                args,
+                cwd=_workdir,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired:
+            raise RuntimeError(f"claude CLI judge call timed out after {timeout}s")
+
     if result.returncode != 0:
         raise RuntimeError(
             f"claude CLI judge call failed (exit {result.returncode}): "
@@ -82,7 +86,11 @@ def _run_claude_judge(prompt: str, model: JudgeModel, timeout: int = 60) -> str:
         payload = json.loads(result.stdout)
         text = payload.get("result") or payload.get("response") or result.stdout
     except json.JSONDecodeError:
-        text = result.stdout
+        # Non-JSON from the CLI means something went wrong structurally; don't
+        # try to parse PASS/FAIL from an error string.
+        raise RuntimeError(
+            f"claude CLI judge returned non-JSON output: {result.stdout[:200]}"
+        )
 
     if "session limit" in text.lower() or "rate limit" in text.lower():
         raise RuntimeError(f"claude CLI judge call hit session/rate limit: {text[:120]}")
