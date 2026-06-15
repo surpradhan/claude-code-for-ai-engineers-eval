@@ -175,17 +175,32 @@ def run_behavior_eval(skill_filter: str | None, skill_pack: Path, source: str, j
                 continue
             asserts = []
 
+            judge_rate_limited = False
             for must_do in scenario.get("must_do", []):
-                asserts.extend(_score_assertion(r.response_text, must_do, "must_do", judge_mode, agreements, scenario["prompt"]))
+                try:
+                    asserts.extend(_score_assertion(r.response_text, must_do, "must_do", judge_mode, agreements, user_prompt=scenario["prompt"]))
+                except RuntimeError as e:
+                    if "rate limit" in str(e).lower() or "session limit" in str(e).lower():
+                        judge_rate_limited = True
+                        console.print(f"    [dim]{scenario['name']} — judge rate limited, skipping remaining assertions[/dim]")
+                        break
+                    raise
 
-            for must_not in scenario.get("must_not_do", []):
-                asserts.extend(_score_assertion(r.response_text, must_not, "must_not_do", judge_mode, agreements, scenario["prompt"]))
+            if not judge_rate_limited:
+                for must_not in scenario.get("must_not_do", []):
+                    try:
+                        asserts.extend(_score_assertion(r.response_text, must_not, "must_not_do", judge_mode, agreements, user_prompt=scenario["prompt"]))
+                    except RuntimeError as e:
+                        if "rate limit" in str(e).lower() or "session limit" in str(e).lower():
+                            console.print(f"    [dim]{scenario['name']} — judge rate limited, skipping remaining assertions[/dim]")
+                            break
+                        raise
 
             passed = sum(1 for a in asserts if a.passed)
             skill_results.append({
                 "name": scenario["name"],
                 "prompt": scenario["prompt"],
-                "score": f"{passed}/{len(asserts)}",
+                "score": f"{passed}/{len(asserts)}" if asserts else "skipped",
                 "assertions": [asdict(a) for a in asserts],
             })
 

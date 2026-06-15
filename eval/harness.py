@@ -31,6 +31,7 @@ import json
 import subprocess
 import tempfile
 import threading
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -111,7 +112,6 @@ def run_claude(
     # Read stdout in a background thread so we can enforce a wall-clock timeout
     # without relying on subprocess.run(timeout=) (which doesn't let us inspect
     # partial output before raising).
-    stdout_lines: list[str] = []
     stderr_buf: list[str] = []
 
     def _read_stderr():
@@ -121,7 +121,6 @@ def run_claude(
     stderr_thread = threading.Thread(target=_read_stderr, daemon=True)
     stderr_thread.start()
 
-    import time
     deadline = time.monotonic() + timeout
 
     for line in proc.stdout:
