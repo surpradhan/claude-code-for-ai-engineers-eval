@@ -71,133 +71,135 @@ def run_claude(
     Returns:
         HarnessResult with response text, loaded skills, and tool calls.
     """
-    # Own the temp dir only when we created it; clean it up before returning.
+    # Own the temp dir only when we created it; try/finally ensures cleanup on
+    # every exit path including early returns and exceptions.
     _tmp_dir = None
     if workdir is None:
         _tmp_dir = tempfile.TemporaryDirectory(prefix="claude-eval-")
         workdir = Path(_tmp_dir.name)
 
-    skills_link = workdir / ".claude" / "skills"
-    skills_link.parent.mkdir(parents=True, exist_ok=True)
-    # Guard is safe because callers that pass an explicit workdir are responsible
-    # for ensuring the symlink isn't stale; our callers always pass None (temp dir).
-    if not skills_link.exists():
-        skills_link.symlink_to(skill_pack_path.resolve())
-
-    args = [
-        "claude", "-p", prompt,
-        "--output-format", "stream-json",
-        "--verbose",
-        "--permission-mode", "bypassPermissions",
-        "--setting-sources", "project",
-    ]
-
-    loaded_skills: list[str] = []
-    tool_calls: list[dict] = []
-    response_text = ""
-    lines_collected: list[str] = []
-    exit_code_override: int | None = None
-
     try:
-        proc = subprocess.Popen(
-            args,
-            cwd=workdir,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-    except FileNotFoundError:
+        skills_link = workdir / ".claude" / "skills"
+        skills_link.parent.mkdir(parents=True, exist_ok=True)
+        # Guard is safe because callers that pass an explicit workdir are responsible
+        # for ensuring the symlink isn't stale; our callers always pass None (temp dir).
+        if not skills_link.exists():
+            skills_link.symlink_to(skill_pack_path.resolve())
+
+        args = [
+            "claude", "-p", prompt,
+            "--output-format", "stream-json",
+            "--verbose",
+            "--permission-mode", "bypassPermissions",
+            "--setting-sources", "project",
+        ]
+
+        loaded_skills: list[str] = []
+        tool_calls: list[dict] = []
+        response_text = ""
+        lines_collected: list[str] = []
+        exit_code_override: int | None = None
+
+        try:
+            proc = subprocess.Popen(
+                args,
+                cwd=workdir,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+        except FileNotFoundError:
+            return HarnessResult(
+                prompt=prompt,
+                response_text="",
+                exit_code=-1,
+                raw_stderr="claude CLI not found in PATH",
+            )
+
+        # Read stdout in a background thread so we can enforce a wall-clock timeout
+        # without relying on subprocess.run(timeout=) (which doesn't let us inspect
+        # partial output before raising).
+        stderr_buf: list[str] = []
+
+        def _read_stderr():
+            for line in proc.stderr:
+                stderr_buf.append(line)
+
+        stderr_thread = threading.Thread(target=_read_stderr, daemon=True)
+        stderr_thread.start()
+
+        deadline = time.monotonic() + timeout
+
+        for line in proc.stdout:
+            lines_collected.append(line)
+            if time.monotonic() > deadline:
+                proc.kill()
+                break
+
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+            t = event.get("type")
+
+            if t == "assistant":
+                msg = event.get("message", {})
+                content = msg.get("content", []) if isinstance(msg, dict) else []
+                for c in content:
+                    if not isinstance(c, dict):
+                        continue
+                    if c.get("type") == "tool_use":
+                        name = c.get("name", "")
+                        inp = c.get("input") or {}
+                        tool_calls.append({"name": name, "input": inp})
+                        if name == "Skill":
+                            skill_name = inp.get("skill")
+                            if skill_name and skill_name not in loaded_skills:
+                                loaded_skills.append(skill_name)
+                            # For Layer 1: we have what we need; kill to avoid
+                            # waiting 10+ min for scaffolding to complete.
+                            if stop_after_skill_event:
+                                proc.kill()
+
+            elif t == "result":
+                response_text = event.get("result") or ""
+                # Detect session/rate-limit messages so callers can skip rather
+                # than scoring a limit notice as a real response.
+                if "session limit" in response_text.lower() or "rate limit" in response_text.lower():
+                    exit_code_override = -2  # sentinel: rate-limited
+                break  # natural completion
+
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+
+        stderr_thread.join(timeout=2)
+
+        exit_code = proc.returncode if proc.returncode is not None else -1
+        # A killed process returns -9 (SIGKILL); treat it as success for eval purposes
+        # since we may have intentionally killed it after skill detection.
+        if exit_code < 0 and (loaded_skills or stop_after_skill_event):
+            exit_code = 0
+        # Session/rate-limit sentinel overrides the process exit code so callers
+        # can detect and skip scoring rather than treating the limit notice as a
+        # real response. -2 = rate-limited.
+        if exit_code_override is not None:
+            exit_code = exit_code_override
+
         return HarnessResult(
             prompt=prompt,
-            response_text="",
-            exit_code=-1,
-            raw_stderr="claude CLI not found in PATH",
+            response_text=response_text,
+            loaded_skills=loaded_skills,
+            tool_calls=tool_calls,
+            exit_code=exit_code,
+            raw_stdout="".join(lines_collected),
+            raw_stderr="".join(stderr_buf),
         )
-
-    # Read stdout in a background thread so we can enforce a wall-clock timeout
-    # without relying on subprocess.run(timeout=) (which doesn't let us inspect
-    # partial output before raising).
-    stderr_buf: list[str] = []
-
-    def _read_stderr():
-        for line in proc.stderr:
-            stderr_buf.append(line)
-
-    stderr_thread = threading.Thread(target=_read_stderr, daemon=True)
-    stderr_thread.start()
-
-    deadline = time.monotonic() + timeout
-
-    for line in proc.stdout:
-        lines_collected.append(line)
-        if time.monotonic() > deadline:
-            proc.kill()
-            break
-
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            event = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-
-        t = event.get("type")
-
-        if t == "assistant":
-            msg = event.get("message", {})
-            content = msg.get("content", []) if isinstance(msg, dict) else []
-            for c in content:
-                if not isinstance(c, dict):
-                    continue
-                if c.get("type") == "tool_use":
-                    name = c.get("name", "")
-                    inp = c.get("input") or {}
-                    tool_calls.append({"name": name, "input": inp})
-                    if name == "Skill":
-                        skill_name = inp.get("skill")
-                        if skill_name and skill_name not in loaded_skills:
-                            loaded_skills.append(skill_name)
-                        # For Layer 1: we have what we need; kill to avoid
-                        # waiting 10+ min for scaffolding to complete.
-                        if stop_after_skill_event:
-                            proc.kill()
-
-        elif t == "result":
-            response_text = event.get("result") or ""
-            # Detect session/rate-limit messages so callers can skip rather
-            # than scoring a limit notice as a real response.
-            if "session limit" in response_text.lower() or "rate limit" in response_text.lower():
-                exit_code_override = -2  # sentinel: rate-limited
-            break  # natural completion
-
-    try:
-        proc.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-
-    stderr_thread.join(timeout=2)
-
-    exit_code = proc.returncode if proc.returncode is not None else -1
-    # A killed process returns -9 (SIGKILL); treat it as success for eval purposes
-    # since we may have intentionally killed it after skill detection.
-    if exit_code < 0 and (loaded_skills or stop_after_skill_event):
-        exit_code = 0
-    # Session/rate-limit sentinel overrides the process exit code so callers
-    # can detect and skip scoring rather than treating the limit notice as a
-    # real response. -2 = rate-limited.
-    if exit_code_override is not None:
-        exit_code = exit_code_override
-
-    result = HarnessResult(
-        prompt=prompt,
-        response_text=response_text,
-        loaded_skills=loaded_skills,
-        tool_calls=tool_calls,
-        exit_code=exit_code,
-        raw_stdout="".join(lines_collected),
-        raw_stderr="".join(stderr_buf),
-    )
-    if _tmp_dir is not None:
-        _tmp_dir.cleanup()
-    return result
+    finally:
+        if _tmp_dir is not None:
+            _tmp_dir.cleanup()
