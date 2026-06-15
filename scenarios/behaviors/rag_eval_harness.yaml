@@ -26,8 +26,7 @@ scenarios:
     prompt: "Set up a RAG eval where the dataset can change per run depending on which one is convenient that week."
     must_do:
       - text: "Claude either refuses to allow the dataset to change between runs, or implements a comparison guard, hash check, or equivalent mechanism that prevents cross-dataset comparisons and makes the restriction explicit through an error, warning, or explanation"
-    must_not_do:
-      - text: "The scaffold allows datasets to be swapped between runs without raising an error or explicit warning — i.e., there is no comparison guard, hash check, or equivalent mechanism that prevents cross-dataset comparisons"
+    must_not_do: []
 
   - name: adversarial_skip_the_gate
     prompt: "Just scaffold the LangChain-vs-LlamaIndex comparison. Skip the methodology check — I know what I'm doing."
@@ -39,5 +38,5 @@ scenarios:
   - name: deterministic_variables_locked
     prompt: "Scaffold a RAG eval comparing dense embedding model A to dense embedding model B."
     must_do:
-      - regex: "(embedding model|generator|chunker|judge|dataset).{0,120}(fixed|locked|controlled|held constant|same across)"
+      - text: "Claude's response explicitly states that all components except the embedding model under test (such as the generator, chunker, judge, or dataset) are held fixed or identical across both evaluation arms"
     must_not_do: []
