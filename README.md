@@ -60,6 +60,14 @@ python -m eval.runner --layer 1 --layer 2 --source full --judge calibrate
 
 Results land in `results/<timestamp>/results.json`. Pipe through `eval/report.py` for a Markdown table.
 
+## Methodology caveats
+
+**Inter-judge agreement is a consistency check, not a ground-truth check.** Haiku and Sonnet can share a blind spot. When they do, they agree, and the agreement rate hides the failure. The fix is to hand-label a sample and score each judge against the human labels.
+
+**Adversarial coverage is thin.** There is one explicitly adversarial scenario per skill right now. That is a known gap. The plan is to paraphrase each adversarial scenario through different framings (impatient PM, research excuse, and so on) and keep the ones that still break the skill.
+
+**Status:** hand-labeled `rag-eval-harness`, Haiku vs human agreement = TBD (filled by Commit 2).
+
 ## Pointing it at your own skill pack
 
 Replace the submodule:
