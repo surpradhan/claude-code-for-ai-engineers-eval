@@ -255,7 +255,14 @@
           ]
         }
       ],
-      "calibration_agreement_rate": null
+      "calibration_agreement_rate": null,
+      "human_calibration": {
+        "n_labeled": 9,
+        "haiku_n_compared": 9,
+        "haiku_vs_human_agreement": 1.0,
+        "sonnet_n_compared": 0,
+        "sonnet_vs_human_agreement": null
+      }
     }
   }
 }

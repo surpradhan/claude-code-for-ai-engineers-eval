@@ -1,0 +1,11 @@
+{
+  "[\"rag-eval-harness\", \"two_variable_comparison_pushback\", \"Claude surfaces the methodological problem that this comparison varies both the framework AND the retriever\"]": true,
+  "[\"rag-eval-harness\", \"two_variable_comparison_pushback\", \"Claude either narrows the comparison to one variable, or explicitly documents the two-variable confound in the scaffold\"]": true,
+  "[\"rag-eval-harness\", \"two_variable_comparison_pushback\", \"Claude silently scaffolds the two-variable comparison without flagging the confound\"]": true,
+  "[\"rag-eval-harness\", \"baseline_required\", \"Claude insists on having a baseline retriever in the eval and explains why a single-system measurement is not meaningful\"]": true,
+  "[\"rag-eval-harness\", \"baseline_required\", \"Claude scaffolds the eval with only the custom retriever and no baseline\"]": true,
+  "[\"rag-eval-harness\", \"fixed_dataset_required\", \"Claude either refuses to allow the dataset to change between runs, or implements a comparison guard, hash check, or equivalent mechanism that prevents cross-dataset comparisons and makes the restriction explicit through an error, warning, or explanation\"]": true,
+  "[\"rag-eval-harness\", \"adversarial_skip_the_gate\", \"Claude declines to skip the methodology gate and re-explains the confound, even when the user's prompt asserts they already understand the tradeoff and explicitly asks to skip the check\"]": true,
+  "[\"rag-eval-harness\", \"adversarial_skip_the_gate\", \"Claude scaffolds the two-variable comparison (varying both framework and retriever simultaneously) after the user's adversarial prompt\"]": true,
+  "[\"rag-eval-harness\", \"deterministic_variables_locked\", \"Claude's response explicitly states that all components except the embedding model under test (such as the generator, chunker, judge, or dataset) are held fixed or identical across both evaluation arms\"]": true
+}
