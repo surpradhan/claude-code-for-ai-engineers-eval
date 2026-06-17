@@ -13,6 +13,17 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BEHAVIORS_DIR = REPO_ROOT / "scenarios" / "behaviors"
+LABELS_DIR = REPO_ROOT / "eval" / "labels"
+
+
+def _load_human_calibration(skill: str) -> "dict | None":
+    labels_file = LABELS_DIR / f"{skill}.json"
+    if not labels_file.exists():
+        return None
+    try:
+        return json.loads(labels_file.read_text()).get("calibration")
+    except (json.JSONDecodeError, KeyError):
+        return None
 
 
 def _load_polarity_index() -> dict:
@@ -101,7 +112,7 @@ def render(results_json: Path) -> str:
                 marker = "OK" if agreement >= 0.90 else "BELOW"
                 out.append(f"_Haiku/Sonnet agreement rate: **{agreement}** ({marker} 0.90 threshold)_")
                 out.append("")
-            human_cal = payload.get("human_calibration")
+            human_cal = _load_human_calibration(skill)
             if human_cal is not None:
                 h_agreement = human_cal.get("haiku_vs_human_agreement")
                 n = human_cal.get("haiku_n_compared", human_cal.get("n_labeled", 0))

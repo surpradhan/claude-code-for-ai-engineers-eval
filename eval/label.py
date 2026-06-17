@@ -4,13 +4,12 @@ CLI:
     python -m eval.label results/<timestamp>/results.json --skill rag-eval-harness
 
 Walks layer_2[skill].scenarios[*].assertions[], deduplicating by
-(scenario_name, assertion_text). Each unique pair is shown once regardless
-of how many judge models scored it (haiku, sonnet, etc.).
+(skill, scenario_name, assertion_text). Each unique triple is shown once
+regardless of how many judge models scored it (haiku, sonnet, etc.).
 
-Labels persist to results/<timestamp>/human_labels.json. Quit-and-resume
-works: re-running picks up from the first unlabeled assertion.
-
-On completion, writes layer_2[skill].human_calibration into results.json.
+Labels and calibration persist to eval/labels/<skill>.json — a stable,
+committed path that is independent of any particular results run.
+Quit-and-resume works: re-running picks up from the first unlabeled assertion.
 """
 
 import json
@@ -22,6 +21,7 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BEHAVIORS_DIR = REPO_ROOT / "scenarios" / "behaviors"
+LABELS_DIR = REPO_ROOT / "eval" / "labels"
 
 
 def _load_polarity_index() -> dict:
@@ -66,12 +66,19 @@ def _make_key(skill: str, scenario_name: str, assertion_text: str) -> str:
 
 def _load_labels(labels_path: Path) -> dict:
     if labels_path.exists():
-        return json.loads(labels_path.read_text())
+        return json.loads(labels_path.read_text()).get("labels", {})
     return {}
 
 
-def _save_labels(labels_path: Path, labels: dict) -> None:
-    labels_path.write_text(json.dumps(labels, indent=2) + "\n")
+def _save_labels(labels_path: Path, labels: dict, calibration: "dict | None" = None) -> None:
+    existing: dict = {}
+    if labels_path.exists():
+        existing = json.loads(labels_path.read_text())
+    existing["labels"] = labels
+    if calibration is not None:
+        existing["calibration"] = calibration
+    labels_path.parent.mkdir(parents=True, exist_ok=True)
+    labels_path.write_text(json.dumps(existing, indent=2) + "\n")
 
 
 def _compute_agreement(
@@ -79,7 +86,7 @@ def _compute_agreement(
 ) -> tuple[int, int, "float | None", int, "float | None"]:
     """Return (n_labeled, haiku_n_compared, haiku_agreement, sonnet_n_compared, sonnet_agreement).
 
-    n_labeled is the total labels in the file for this skill.
+    n_labeled is the total labels for this skill.
     haiku_n_compared is the subset that found a matching haiku verdict in results.json —
     the two can differ if results.json is regenerated with different assertion texts after
     labelling, making n_labeled misleading as the N= denominator.
@@ -110,12 +117,6 @@ def _compute_agreement(
     return len(labels), haiku_total, haiku_agreement, sonnet_total, sonnet_agreement
 
 
-def _update_results(results_path: Path, skill: str, human_calibration: dict) -> None:
-    data = json.loads(results_path.read_text())
-    data["layer_2"][skill]["human_calibration"] = human_calibration
-    results_path.write_text(json.dumps(data, indent=2) + "\n")
-
-
 @click.command()
 @click.argument("results_json", type=click.Path(exists=True, path_type=Path))
 @click.option("--skill", required=True, help="Skill to label (e.g. rag-eval-harness)")
@@ -132,7 +133,7 @@ def main(results_json: Path, skill: str) -> None:
         click.echo(f"Skill '{skill}' was skipped in this run.", err=True)
         sys.exit(1)
 
-    labels_path = results_json.parent / "human_labels.json"
+    labels_path = LABELS_DIR / f"{skill}.json"
     labels = _load_labels(labels_path)
     polarity_idx = _load_polarity_index()
     skill_polarities = polarity_idx.get(skill, {})
@@ -236,8 +237,8 @@ def main(results_json: Path, skill: str) -> None:
             "sonnet_n_compared": sonnet_n,
             "sonnet_vs_human_agreement": sonnet_agreement,
         }
-        _update_results(results_json, skill, human_calibration)
-        click.echo(f"\nWrote human_calibration to {results_json}")
+        _save_labels(labels_path, labels, calibration=human_calibration)
+        click.echo(f"\nWrote labels and calibration to {labels_path}")
 
 
 if __name__ == "__main__":
