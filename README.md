@@ -66,7 +66,7 @@ Results land in `results/<timestamp>/results.json`. Pipe through `eval/report.py
 
 **Adversarial coverage is thin.** There is one explicitly adversarial scenario per skill right now. That is a known gap. The plan is to paraphrase each adversarial scenario through different framings (impatient PM, research excuse, and so on) and keep the ones that still break the skill.
 
-**Status:** hand-labeled `rag-eval-harness`, Haiku vs human agreement = TBD (filled by Commit 2).
+**Status:** hand-labeled `rag-eval-harness`, Haiku vs human agreement = 1.00 (N=9).
 
 ## Pointing it at your own skill pack
 

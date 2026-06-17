@@ -101,6 +101,13 @@ def render(results_json: Path) -> str:
                 marker = "OK" if agreement >= 0.90 else "BELOW"
                 out.append(f"_Haiku/Sonnet agreement rate: **{agreement}** ({marker} 0.90 threshold)_")
                 out.append("")
+            human_cal = payload.get("human_calibration")
+            if human_cal is not None:
+                h_agreement = human_cal.get("haiku_vs_human_agreement")
+                n = human_cal.get("haiku_n_compared", human_cal.get("n_labeled", 0))
+                if h_agreement is not None:
+                    out.append(f"_Haiku vs human agreement: {h_agreement:.3f} (N={n} labels)_")
+                    out.append("")
             skill_polarities = polarity_idx.get(skill, {})
             for s in payload["scenarios"]:
                 out.append(f"- **{s['name']}** — {s['score']}")
