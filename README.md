@@ -7,7 +7,7 @@ A test harness for Claude Code skill packs. Built originally for the [Claude Cod
 
 ## Verified by self-test
 
-Last run: 2026-06-15. Source: preview pack. Claude Code CLI v2.1.175.
+Last run: 2026-06-20. Source: preview pack. Claude Code CLI v2.1.175.
 
 **Layer 1 — trigger eval (`rag-eval-harness`):** precision **1.000**, recall **1.000** (15 TP / 0 FP / 15 TN / 0 FN).
 
