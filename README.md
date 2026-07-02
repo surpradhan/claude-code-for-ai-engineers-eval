@@ -29,9 +29,9 @@ Last run: 2026-06-15. Source: preview pack. Claude Code CLI v2.1.175.
 This harness runs scenarios against two skill-pack sources:
 
 - **`--source preview`** (default) — the public submodule at `./skill-pack/`. Covers the 2 preview skills: `rag-eval-harness`, `agent-trace-debug`. This is what CI tests, and what the green badge proves.
-- **`--source full`** — the full paid pack at `./skill-pack-full/` (gitignored, local-only). Covers all 6 skills.
+- **`--source full`** — a local, gitignored skill-pack directory at `./skill-pack-full/`. For extending the harness to a private pack.
 
-Scenarios for the 4 paid skills are committed to this repo because they are behavior contracts, not skill content. They simply skip in `--source preview` runs.
+Scenarios for the 4 non-preview skills are committed to this repo because they are behavior contracts, not skill content. They simply skip in `--source preview` runs.
 
 ## Quick start
 
@@ -52,9 +52,9 @@ claude --version
 # Public CI scorecard — 2 preview skills
 python -m eval.runner --layer 1 --layer 2 --source preview
 
-# Full scorecard — local only, requires the Gumroad pack
+# Full scorecard — requires a local skill-pack directory
 mkdir -p skill-pack-full
-ln -s ~/path/to/unpacked-gumroad-pack/skills skill-pack-full/skills
+ln -s /path/to/your/local/skill-pack/skills skill-pack-full/skills
 python -m eval.runner --layer 1 --layer 2 --source full --judge calibrate
 ```
 

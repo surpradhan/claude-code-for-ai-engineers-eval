@@ -42,7 +42,7 @@ SKILL_SOURCES = {
 @click.option("--skill", default=None, help="Filter to one skill (e.g. rag-eval-harness)")
 @click.option("--source", "source", type=click.Choice(["preview", "full"]), default="preview",
               help="'preview' = public skill-pack submodule (2 skills). "
-                   "'full' = local-only skill-pack-full/ (all 6 skills, requires Gumroad pack).")
+                   "'full' = local-only skill-pack-full/ (all 6 skills, requires a private local pack).")
 @click.option("--judge", "judge_mode",
               type=click.Choice(["haiku", "sonnet", "calibrate"]),
               default="haiku",
@@ -53,9 +53,9 @@ def main(layer: tuple[str, ...], skill: str | None, source: str, judge_mode: str
     if not skill_pack.exists():
         if source == "full":
             raise click.ClickException(
-                f"--source full requires the paid pack at {skill_pack}. "
-                "Unpack the Gumroad zip and symlink: "
-                "ln -s <unpacked>/skills skill-pack-full/skills"
+                f"--source full requires a local pack at {skill_pack}. "
+                "Symlink your local pack: "
+                "ln -s <your-pack>/skills skill-pack-full/skills"
             )
         raise click.ClickException(
             f"Skill pack not found at {skill_pack}. Did you run "

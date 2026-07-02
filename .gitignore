@@ -13,7 +13,7 @@ results/*
 # Claude Code local config / session state.
 .claude/
 
-# Full (paid) skill pack — local-only, never committed.
-# Symlink or unzip the Gumroad pack contents into this directory:
-#   ln -s ~/path/to/unpacked-gumroad-pack/skills skill-pack-full/skills
+# Full local-only skill pack, never committed.
+# Symlink your local pack contents into this directory:
+#   ln -s /path/to/your/local/pack/skills skill-pack-full/skills
 skill-pack-full/
